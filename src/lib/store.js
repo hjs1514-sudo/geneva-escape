@@ -27,6 +27,7 @@ export const emptyGame = () => ({
   outUntil: null,       // 통행증을 다 잃고 쉬는 중이면 끝나는 시각
   found: [],            // 발견한 보관함 id
   cluesRead: [],        // 읽은 단서 id
+  findHints: {},        // 보관함(또는 vault) id -> 받은 길 찾기 힌트 단계(1·2)
   boxes: {},            // boxId -> { opened, lockWrong, quizzes: { qid -> { step, done, wrong, hints } }, keyAt }
   vault: { found: false, placed: false, open: false, wrong: 0, sentence: '', at: null },
   outcome: null,        // 'escaped' | 'timeout' | null

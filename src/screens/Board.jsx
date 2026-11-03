@@ -171,7 +171,7 @@ function ClassView({ cls, onForget }) {
                 <div className="stu-name">{t.team}{nickCount[t.team] > 1 && <span className="warn"> 같은 닉네임</span>}</div>
                 <div className="stu-status">{STATUS[s.status]}{s.stale ? ' · 연결 끊김?' : ''}{s.left != null ? ` · ${fmtTime(s.left)}` : ''}</div>
                 <div className="stu-keys">{BOXES.map((b) => <img key={b.id} src={`art/${b.key}.webp`} className={s.g.boxes?.[b.id]?.keyAt ? '' : 'nokey'} title={`${b.year} ${b.keyWord}`} alt="" />)}</div>
-                <div className="small">통행증 {s.g.lives ?? '-'}장 · 들킴 {s.g.caught || 0} · 퀴즈 오답 {s.wrong}{s.open ? ` · ${s.open.year} 보관함 푸는 중` : ''}</div>
+                <div className="small">통행증 {s.g.lives ?? '-'}장 · 들킴 {s.g.caught || 0} · 퀴즈 오답 {s.wrong}{Object.keys(s.g.findHints || {}).length ? ` · 찾기 힌트 ${Object.values(s.g.findHints).reduce((a, b) => a + b, 0)}번` : ''}{s.open ? ` · ${s.open.year} 보관함 푸는 중` : ''}</div>
               </div>
               <div className="stu-btns">
                 <button className="btn small ghost" onClick={() => act(() => giveTime(cls.code, cls.key, t.team_id, 5))}>+5분</button>

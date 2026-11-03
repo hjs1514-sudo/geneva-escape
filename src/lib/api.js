@@ -37,7 +37,7 @@ function slim(g) {
   return {
     nick: g.nick, avatar: g.avatar, startedAt: g.startedAt, endAt: g.endAt, minutes: g.minutes,
     pos: { x: Math.round(g.pos.x), y: Math.round(g.pos.y) }, lives: g.lives, caught: g.caught, outUntil: g.outUntil,
-    found: g.found, cluesRead: g.cluesRead, boxes: g.boxes, vault: g.vault, outcome: g.outcome, escapedAt: g.escapedAt,
+    found: g.found, cluesRead: g.cluesRead, findHints: g.findHints, boxes: g.boxes, vault: g.vault, outcome: g.outcome, escapedAt: g.escapedAt,
     addedMinutes: g.addedMinutes, remoteMinutes: g.remoteMinutes, lastGift: g.lastGift, at: Date.now(),
   };
 }

@@ -27,9 +27,10 @@ export default function Explore({ game, update, cfg, now }) {
   const [modal, setModal] = useState(null); // {type:'box', id} | {type:'clue', id} | {type:'vault'} | {type:'found', id}
   const [flash, setFlash] = useState(null);
   const [showMap, setShowMap] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const g = useRef(game);
   g.current = game;
-  const paused = !!modal || showMap || (game.outUntil && game.outUntil > now) || game.outcome;
+  const paused = !!modal || showMap || showHint || (game.outUntil && game.outUntil > now) || game.outcome;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
@@ -142,7 +143,7 @@ export default function Explore({ game, update, cfg, now }) {
     if (paused) return;
     const b = BOXES.find((b) => !game.found.includes(b.id) && dist(b.at, p) < FIND);
     if (b) {
-      update((x) => { if (!x.found.includes(b.id)) x.found.push(b.id); return x; });
+      update((x) => { if (!x.found.includes(b.id)) x.found.push(b.id); x.lastFindAt = Date.now(); return x; });
       keys.current = {}; stick.current = null; target.current = null;
       setModal({ type: 'found', id: b.id });
     }
@@ -173,6 +174,12 @@ export default function Explore({ game, update, cfg, now }) {
   const sparkle = BOXES.some((b) => !game.found.includes(b.id) && dist(b.at, p) < SPARKLE);
   const hidden = inShadow(p);
   const here = roomOf(p);
+
+  // 길 찾기 힌트: 아직 못 찾은 첫 보관함, 열쇠를 다 모았으면 지하 금고
+  const seek = BOXES.find((b) => !game.found.includes(b.id)) || (vaultOn ? { id: 'vault', at: VAULT.at, findHint: VAULT.findHint } : null);
+  const seekLevel = seek ? game.findHints?.[seek.id] || 0 : 0;
+  const stuck = seek && now - (game.lastFindAt || game.startedAt || now) > 3 * 60000;
+  const arrow = seek && seekLevel >= 2 && dist(seek.at, p) > FIND ? Math.atan2(seek.at.y - p.y, seek.at.x - p.x) : null;
 
   const left = game.endAt ? game.endAt - now : 0;
   const out = game.outUntil && game.outUntil > now;
@@ -206,6 +213,7 @@ export default function Explore({ game, update, cfg, now }) {
           <div className="hud-keys" aria-label={`열쇠 ${keyCount}개`}>
             {BOXES.map((b) => <img key={b.id} src={`art/${b.key}.webp`} className={game.boxes[b.id]?.keyAt ? '' : 'nokey'} alt="" />)}
           </div>
+          <button className={`btn small ghost hint-btn ${stuck && seekLevel < 2 ? 'pulse' : ''}`} onClick={() => setShowHint(true)}>힌트</button>
           <button className="btn small ghost" onClick={() => setShowMap(true)}>지도</button>
         </div>
       </header>
@@ -231,6 +239,8 @@ export default function Explore({ game, update, cfg, now }) {
             <img key={i} className={`guard ${gd.moving ? 'walk' : ''}`} src="art/guard.webp" alt=""
               style={{ left: gd.x, top: gd.y, height: GUARD_H, transform: `translate(-50%, -100%) scaleX(${Math.cos(gd.dir) < 0 ? -1 : 1})` }} />
           ))}
+          {seek && seekLevel >= 2 && <div className="hint-ring" style={{ left: seek.at.x, top: seek.at.y }} />}
+          {arrow !== null && <div className="hint-arrow" style={{ left: p.x + Math.cos(arrow) * 66, top: p.y - 40 + Math.sin(arrow) * 66, transform: `translate(-50%, -50%) rotate(${arrow}rad)` }} />}
           <div className={`me ${walking.current ? 'walk' : ''} ${Date.now() < safeUntil.current ? 'blink' : ''} ${hidden ? 'hidden' : ''}`} style={{ left: p.x, top: p.y }}>
             <img src={`art/av_${game.avatar}.webp`} alt="나" style={{ height: AV_H, transform: `scaleX(${face.current})` }} draggable={false} />
             <span className="me-name">{game.nick}</span>
@@ -281,7 +291,9 @@ export default function Explore({ game, update, cfg, now }) {
         );
       })()}
       {modal?.type === 'vault' && <VaultModal game={game} update={update} onClose={() => setModal(null)} />}
-      {showMap && <MiniMap game={game} p={p} onClose={() => setShowMap(false)} />}
+      {showMap && <MiniMap game={game} p={p} seek={seekLevel >= 2 ? seek : null} onClose={() => setShowMap(false)} />}
+      {showHint && <FindHint seek={seek} level={seekLevel} game={game} onClose={() => setShowHint(false)}
+        onMore={() => update((x) => { x.findHints ||= {}; x.findHints[seek.id] = (x.findHints[seek.id] || 0) + 1; return x; })} />}
       {out && (
         <div className="modal-back">
           <div className="modal out-pop">
@@ -329,7 +341,31 @@ function Joystick({ stick, target }) {
   );
 }
 
-function MiniMap({ game, p, onClose }) {
+function FindHint({ seek, level, game, onClose, onMore }) {
+  const isVault = seek?.id === 'vault';
+  const name = isVault ? '지하 금고' : seek ? `보관함 ${seek.no}` : '';
+  return (
+    <div className="modal-back" onClick={onClose}>
+      <div className="modal hint-pop" onClick={(e) => e.stopPropagation()}>
+        <h3>길 찾기 힌트</h3>
+        {!seek && <p>보관함 네 개를 모두 찾았어요! 지도에 보이는 보관함으로 돌아가 남은 퀴즈를 풀고 열쇠를 모으세요.</p>}
+        {seek && (
+          <>
+            <p className="small">다음에 찾을 곳: <b>{name}</b></p>
+            {level === 0 && <p>막혔나요? 힌트를 받으면 선생님 진행판에 힌트를 쓴 횟수가 남아요.</p>}
+            {seek.findHint.slice(0, level).map((h, i) => <p key={i} className="hint">힌트 {i + 1}. {h}</p>)}
+            {level >= 2 && <p className="small">화면에 노란 화살표와 빛나는 동그라미가 생겼어요. 화살표를 따라가 보세요!</p>}
+            {level < 2 && <button className="btn" onClick={onMore}>{level === 0 ? '힌트 1 받기 (어느 방?)' : '힌트 2 받기 (화살표로 안내)'}</button>}
+          </>
+        )}
+        {game.cluesRead.length < 4 && seek && !isVault && level < 2 && <p className="small">지도 곳곳의 단서(게시판·달력·신문·전보)에도 다음 보관함 위치가 적혀 있어요.</p>}
+        <button className="btn ghost" onClick={onClose}>닫기</button>
+      </div>
+    </div>
+  );
+}
+
+function MiniMap({ game, p, seek, onClose }) {
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal minimap" onClick={(e) => e.stopPropagation()}>
@@ -340,6 +376,7 @@ function MiniMap({ game, p, onClose }) {
           {BOXES.filter((b) => game.found.includes(b.id)).map((b) => (
             <span key={b.id} className={`mini-box ${game.boxes[b.id]?.keyAt ? 'done' : ''}`} style={{ left: `${(b.at.x / WORLD.w) * 100}%`, top: `${(b.at.y / WORLD.h) * 100}%` }}>{b.year}</span>
           ))}
+          {seek && <span className="mini-seek" style={{ left: `${(seek.at.x / WORLD.w) * 100}%`, top: `${(seek.at.y / WORLD.h) * 100}%` }} />}
           <span className="mini-me" style={{ left: `${(p.x / WORLD.w) * 100}%`, top: `${(p.y / WORLD.h) * 100}%` }} />
         </div>
         <div className="notebook">
