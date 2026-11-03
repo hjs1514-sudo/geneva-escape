@@ -21,9 +21,7 @@ export default function Teacher() {
   if (!ok) {
     return (
       <div className="teacher">
-        <PinModal title="교사 화면" pin={settings.pin} onOk={() => setOk(true)} onCancel={() => { location.hash = '#/'; }}>
-          <p>처음 PIN은 {SETTINGS.teacherPin}이에요. 들어가서 바꿀 수 있어요.</p>
-        </PinModal>
+        <PinModal title="교사 화면" pin={settings.pin} onOk={() => setOk(true)} onCancel={() => { location.hash = '#/'; }} />
       </div>
     );
   }
