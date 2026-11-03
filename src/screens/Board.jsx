@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SETTINGS, BOXES, WORLD, ROOMS, AVATARS } from '../data/game.js';
 import { fmtTime, useNow } from '../lib/store.js';
-import { createClass, getClass, giveTime, giveLife } from '../lib/api.js';
+import { createClass, getClass, giveTime, giveLife, avatarFrom } from '../lib/api.js';
 import { guardAt, GUARD_COUNT, wedge } from '../lib/world.js';
 import { Qr, appUrl } from '../components/Qr.jsx';
 
@@ -153,7 +153,7 @@ function ClassView({ cls, onForget }) {
           {ROOMS.map((r) => <span key={r.id} className="mini-room" style={{ left: `${((r.x + r.w / 2) / WORLD.w) * 100}%`, top: `${((r.y + 20) / WORLD.h) * 100}%` }}>{r.name}</span>)}
           {teams.filter((t) => t.s.status === 'playing' && t.s.g.pos).map((t) => (
             <div key={t.team_id} className={`live-stu ${t.s.stale ? 'stale' : ''}`} style={{ left: `${(t.s.g.pos.x / WORLD.w) * 100}%`, top: `${(t.s.g.pos.y / WORLD.h) * 100}%` }}>
-              <img src={`art/av_${t.klass || 'trench_briefcase'}.webp`} alt="" />
+              <img src={`art/av_${avatarFrom(t.klass).id}.webp`} alt="" />
               <span>{t.team}<b>{'🔑'.repeat(t.s.keys)}</b></span>
             </div>
           ))}
@@ -166,7 +166,7 @@ function ClassView({ cls, onForget }) {
           const s = t.s;
           return (
             <div key={t.team_id} className={`stu ${s.status} ${s.stale ? 'stale' : ''}`}>
-              <img className="stu-av" src={`art/av_${t.klass || 'trench_briefcase'}.webp`} alt={AVATARS.find((a) => a.id === t.klass)?.name || ''} />
+              <img className="stu-av" src={`art/av_${avatarFrom(t.klass).id}.webp`} alt={avatarFrom(t.klass).name} />
               <div className="stu-main">
                 <div className="stu-name">{t.team}{nickCount[t.team] > 1 && <span className="warn"> 같은 닉네임</span>}</div>
                 <div className="stu-status">{STATUS[s.status]}{s.stale ? ' · 연결 끊김?' : ''}{s.left != null ? ` · ${fmtTime(s.left)}` : ''}</div>

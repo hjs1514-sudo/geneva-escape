@@ -2,7 +2,11 @@
 // 세책점 진행판과 같은 서버를 쓰고, 학생 한 명을 '모둠' 하나로 보냅니다.
 // 서버가 없는 곳에서는 실패하고, 게임은 혼자 그대로 작동합니다.
 import { useEffect, useRef, useState } from 'react';
-import { SETTINGS } from '../data/game.js';
+import { SETTINGS, AVATARS } from '../data/game.js';
+
+// 서버는 klass를 10자까지만 받으므로 아바타는 번호(av0~av5)로 보낸다
+export const avatarCode = (id) => `av${Math.max(0, AVATARS.findIndex((a) => a.id === id))}`;
+export const avatarFrom = (k) => (/^av\d+$/.test(k || '') ? AVATARS[Number(k.slice(2))] : AVATARS.find((a) => a.id === k)) || AVATARS[0];
 
 const BASE = SETTINGS.apiBase;
 
@@ -49,7 +53,7 @@ export function useSync(game, update) {
     const g = latest.current;
     if (!g.classCode || !g.teamId || !g.startedAt) return;
     try {
-      const r = await pushProgress(g.classCode, { team_id: g.teamId, team: g.nick, klass: g.avatar, state: slim(g) });
+      const r = await pushProgress(g.classCode, { team_id: g.teamId, team: g.nick, klass: avatarCode(g.avatar), state: slim(g) });
       setStatus('ok');
       const extra = r.extra_min || 0;
       if (extra > (g.remoteMinutes || 0)) {
