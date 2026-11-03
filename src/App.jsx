@@ -30,6 +30,7 @@ function Student({ q }) {
   const [settings] = useSettings();
   const now = useNow(500);
   const sync = useSync(game, update);
+  const [opening, setOpening] = useState(true);
 
   // QR 주소로 받은 수업 설정 (?c=수업코드&m=분&g=경비원수&s=빠르기)
   const fromQr = q.get('c') || q.get('m') || q.get('g');
@@ -47,7 +48,8 @@ function Student({ q }) {
     }
   }, [now, game.startedAt, game.outcome, game.endAt, update]);
 
-  if (!game.nick && !game.introSeen) return <OpeningVideo onDone={() => update((x) => { x.introSeen = true; return x; })} />;
+  // 주소를 열 때마다(새로고침 포함) 기록과 상관없이 도입 영상부터
+  if (opening) return <OpeningVideo onDone={() => setOpening(false)} />;
   if (!game.nick) return <Join cfg={cfg} fromQr={!!fromQr} update={update} />;
   if (!game.startedAt) return <Intro game={game} update={update} reset={reset} />;
   if (game.outcome) return <End game={game} reset={reset} sync={sync} />;
@@ -123,7 +125,7 @@ function Intro({ game, update, reset }) {
           <IdCard game={game} />
           <p>조사관 등록이 끝났어요. 이 통행증 3장이 있어야 문서고를 돌아다닐 수 있어요.</p>
           <div className="row center">
-            <button className="btn ghost" onClick={() => { reset(); update((x) => { x.introSeen = true; return x; }); }}>다시 등록</button>
+            <button className="btn ghost" onClick={reset}>다시 등록</button>
             <button className="btn" onClick={() => setPage(2)}>관리인의 편지 읽기</button>
           </div>
         </div>
