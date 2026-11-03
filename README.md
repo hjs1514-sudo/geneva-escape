@@ -24,3 +24,4 @@ npm run build   # dist/
 - 그림: `public/art/` (Canva 제작), 도입 영상: `public/media/intro.mp4`
 - 실제 사진을 넣으려면 `public/sources/<이름>.jpg` (munitions, versailles, breadline, auschwitz)
 - 진행판 서버는 역사교사 아카이브의 `/api/sechaek`(Cloudflare D1)를 함께 씁니다. 서버가 없으면 혼자 하기만 됩니다.
+- 진행판 배경음악 `public/media/bgm.mp3`: `tools/bgm-render.html`로 만든 58초 반복곡(실제 악기 샘플 tonejs-instrument-*-mp3, MIT). 다시 만들려면 그 폴더에 해당 npm 패키지를 설치하고 웹 서버로 연 뒤 `render()`를 실행해 WAV를 받습니다.

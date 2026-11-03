@@ -1,0 +1,102 @@
+<!doctype html><meta charset="utf-8"><script>
+const SR = 44100, BPM = 132, E = 60 / BPM / 2, BAR = E * 8, BARS = 32, LOOP = BAR * BARS, TAIL = 4;
+const NAMES = { C: 0, Cs: 1, D: 2, Ds: 3, E: 4, F: 5, Fs: 6, G: 7, Gs: 8, A: 9, As: 10, B: 11 };
+const midi = (n) => { const m = n.match(/^([A-G]s?)(-?\d)$/); return 12 * (Number(m[2]) + 1) + NAMES[m[1]]; };
+const LIST = {
+  cello: 'A2 As2 B2 C2 C3 C4 C5 Cs3 D2 D3 D4 Ds2 Ds3 E2 E3 E4 F2 F3 F4 Fs3 G2 G3 G4 Gs2 Gs3 A3 A4 As3 As4 B3 B4 Cs4 Ds4 Fs4 Gs4',
+  contrabass: 'A2 As1 B3 C2 Cs3 D2 E2 E3 Fs1 Fs2 G1 Gs2 Gs3',
+  violin: 'A3 A4 A5 A6 C4 C5 C6 C7 E4 E5 E6 G3 G4 G5 G6',
+  piano: 'A1 A2 A3 A4 C2 C3 C4 C5 Ds2 Ds3 Ds4 Fs1 Fs2 Fs3 Fs4',
+  'french-horn': 'A1 A3 C2 C4 D3 D5 Ds2 F3 F5 G2',
+  tuba: 'As1 As2 As3 D3 D4 Ds2 F1 F2 F3',
+};
+let ctx, bufs = {};
+async function load() {
+  const tmp = new OfflineAudioContext(2, SR, SR);
+  for (const [inst, l] of Object.entries(LIST)) {
+    bufs[inst] = [];
+    for (const n of l.split(' ')) {
+      const ab = await (await fetch(`node_modules/tonejs-instrument-${inst}-mp3/${n}.mp3`)).arrayBuffer();
+      bufs[inst].push({ m: midi(n), b: await tmp.decodeAudioData(ab) });
+    }
+  }
+}
+let bus;
+function note(inst, n, t, dur, gain, { attack = 0.005, release = 0.12, pan = 0 } = {}) {
+  const target = typeof n === 'number' ? n : midi(n);
+  const s = bufs[inst].reduce((a, b) => (Math.abs(b.m - target) < Math.abs(a.m - target) ? b : a));
+  const src = ctx.createBufferSource();
+  src.buffer = s.b; src.playbackRate.value = 2 ** ((target - s.m) / 12);
+  const g = ctx.createGain(); const p = ctx.createStereoPanner(); p.pan.value = pan;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + attack);
+  g.gain.setValueAtTime(gain, t + Math.max(attack, dur));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(attack, dur) + release);
+  src.connect(g); g.connect(p); p.connect(bus);
+  src.start(t); src.stop(t + dur + release + 0.05);
+}
+async function render() {
+  await load();
+  ctx = new OfflineAudioContext(2, Math.ceil(SR * (LOOP + TAIL)), SR);
+  // 홀처럼 살짝 울리게: 짧은 잔향
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3;
+  bus = ctx.createGain(); bus.gain.value = 0.9;
+  const ir = ctx.createBuffer(2, SR * 1.8, SR);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3.2); }
+  const verb = ctx.createConvolver(); verb.buffer = ir;
+  const wet = ctx.createGain(); wet.gain.value = 0.22;
+  bus.connect(comp); bus.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(ctx.destination);
+
+  const OST = ['A2', 'A2', 'C3', 'A2', 'As2', 'A2', 'C3', 'A2', 'A2', 'A2', 'E3', 'A2', 'F3', 'E3', 'C3', 'As2'];
+  for (let bar = 0; bar < BARS; bar++) {
+    const t0 = bar * BAR, sec = Math.floor(bar / 8);
+    // 첼로 스타카토 반복(처음부터 끝까지)
+    for (let i = 0; i < 8; i++) {
+      if (bar === BARS - 1 && i >= 6) break;
+      const n = OST[(bar % 2) * 8 + i];
+      note('cello', n, t0 + i * E, E * 0.8, (i % 4 === 0 ? 1.0 : 0.75) + sec * 0.06, { release: 0.08, pan: -0.25 });
+      if (sec >= 2) note('cello', midi(n) + 12, t0 + i * E, E * 0.7, 0.35, { release: 0.07, pan: 0.2 });
+    }
+    // 콘트라베이스: 1·3박, 셋째 단락부터 8분음표
+    for (let i = 0; i < 8; i += sec >= 2 ? 1 : 4) note('contrabass', bar % 4 === 3 && i >= 4 ? 'F1' : 'A1', t0 + i * E, sec >= 2 ? E * 0.8 : E * 1.6, 0.8, { release: 0.15, pan: 0.1 });
+    // 피아노 낮은 옥타브 '쿵'
+    if (bar % (sec >= 3 ? 1 : 2) === 0) { note('piano', 'A1', t0, 1.8, 0.4, { release: 0.6 }); note('piano', 'A0', t0, 1.8, 0.25, { release: 0.6 }); }
+    if (sec >= 1 && bar % 4 === 3) { note('piano', 'F1', t0 + 4 * E, 1.2, 0.35, { release: 0.5 }); note('piano', 'F2', t0 + 4 * E, 1.2, 0.35, { release: 0.5 }); }
+    // 바이올린 트레몰로(16분음표 반복), 둘째 단락부터
+    if (sec >= 1) {
+      const top = sec === 1 ? 'E5' : sec === 2 ? (bar % 4 < 2 ? 'F5' : 'E5') : ['E5', 'F5', 'G5', 'A5'][Math.floor((bar - 24) / 2)];
+      for (let k = 0; k < 16; k++) {
+        const g = (0.16 + sec * 0.05) * (0.75 + 0.25 * Math.sin(k));
+        note('violin', top, t0 + k * E / 2, E * 0.42, g, { attack: 0.01, release: 0.05, pan: 0.35 });
+        if (sec >= 3) note('violin', midi(top) - 12, t0 + k * E / 2, E * 0.42, g * 0.7, { attack: 0.01, release: 0.05, pan: -0.35 });
+      }
+    }
+    // 호른: 셋째 단락부터 2마디씩 길게 부풀어 오르는 소리
+    if (sec >= 2 && bar % 2 === 0) {
+      const h = ['A3', 'C4', 'As3', 'A3', 'D4', 'C4', 'E4', 'E4'][(bar - 16) / 2];
+      note('french-horn', h, t0, BAR * 2 - 0.1, 0.5, { attack: BAR * 1.2, release: 0.3, pan: -0.1 });
+      note('french-horn', midi(h) - 12, t0, BAR * 2 - 0.1, 0.35, { attack: BAR * 1.2, release: 0.3, pan: 0.1 });
+    }
+    // 튜바: 마지막 단락
+    if (sec === 3 && bar % 2 === 0) note('tuba', 'A1', t0, BAR * 2 - 0.05, 0.4, { attack: 0.3, release: 0.3 });
+  }
+  // 마지막 박: 다 같이 한 번 '쾅'
+  const end = LOOP - 2 * E;
+  ['A1', 'A2', 'E3', 'A3'].forEach((n) => note('piano', n, end, 1.5, 0.5, { release: 0.8 }));
+  note('contrabass', 'A1', end, E * 1.5, 0.7); note('french-horn', 'A3', end, E * 1.8, 0.5, { attack: 0.02 }); note('tuba', 'A1', end, E * 1.8, 0.5, { attack: 0.02 });
+
+  const buf = await ctx.startRendering();
+  // 꼬리를 앞에 겹쳐 이음매 없이 반복되게
+  const n = Math.round(SR * LOOP), out = [];
+  for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); const o = d.slice(0, n); for (let i = n; i < d.length; i++) o[i - n] += d[i]; out.push(o); }
+  let peak = 0; for (const o of out) for (const v of o) peak = Math.max(peak, Math.abs(v));
+  const norm = 0.89 / peak;
+  const dv = new DataView(new ArrayBuffer(44 + n * 4));
+  const w = (o, s) => [...s].forEach((ch, k) => dv.setUint8(o + k, ch.charCodeAt(0)));
+  w(0, 'RIFF'); dv.setUint32(4, 36 + n * 4, true); w(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 2, true);
+  dv.setUint32(24, SR, true); dv.setUint32(28, SR * 4, true); dv.setUint16(32, 4, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, n * 4, true);
+  for (let i = 0; i < n; i++) { dv.setInt16(44 + i * 4, out[0][i] * norm * 32767, true); dv.setInt16(46 + i * 4, out[1][i] * norm * 32767, true); }
+  const u8 = new Uint8Array(dv.buffer); let s = ''; for (let k = 0; k < u8.length; k += 0x8000) s += String.fromCharCode(...u8.subarray(k, k + 0x8000));
+  return { b64: btoa(s), loop: LOOP, peak };
+}
+</script>
