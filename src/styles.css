@@ -390,3 +390,8 @@ h1, h2, h3, h4 { font-family: var(--serif); line-height: 1.35; }
 .opening-bar { position: absolute; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 8px; }
 .opening-play { position: absolute; inset: 0; margin: auto; width: 180px; height: 180px; border-radius: 50%; border: 3px solid var(--brass); background: rgba(10, 13, 20, .7); color: var(--brass); font-size: 3.4rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .opening-play span { font-size: .95rem; font-weight: 700; color: var(--paper); }
+
+/* 진행판 배경음악 */
+.music { display: inline-flex; align-items: center; gap: 8px; }
+.music.on .btn { border-color: var(--brass); color: var(--brass); }
+.music input[type=range] { width: 110px; accent-color: var(--brass); }

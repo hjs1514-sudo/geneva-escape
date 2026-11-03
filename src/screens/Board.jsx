@@ -6,6 +6,7 @@ import { fmtTime, useNow } from '../lib/store.js';
 import { createClass, getClass, giveTime, giveLife, avatarFrom } from '../lib/api.js';
 import { guardAt, GUARD_COUNT, wedge } from '../lib/world.js';
 import { Qr, appUrl } from '../components/Qr.jsx';
+import { MusicButton } from '../lib/music.jsx';
 
 const SAVE_KEY = 'geneva-board-v1';
 const POLL_MS = 3000;
@@ -34,6 +35,7 @@ export default function Board({ q }) {
       <header className="board-head">
         <h1>실시간 진행판 · {SETTINGS.title}</h1>
         <div className="row">
+          <MusicButton />
           {cls && <button className="btn ghost small" onClick={() => setCurrent(null)}>수업 목록</button>}
           <a className="btn ghost small" href="#/teacher">교사 화면</a>
         </div>
