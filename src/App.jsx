@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SETTINGS, AVATARS, STORY, BOXES } from './data/game.js';
 import { useGame, useSettings, useNow, fmtTime, newId, keysOf } from './lib/store.js';
 import { useSync } from './lib/api.js';
@@ -47,6 +47,7 @@ function Student({ q }) {
     }
   }, [now, game.startedAt, game.outcome, game.endAt, update]);
 
+  if (!game.nick && !game.introSeen) return <OpeningVideo onDone={() => update((x) => { x.introSeen = true; return x; })} />;
   if (!game.nick) return <Join cfg={cfg} fromQr={!!fromQr} update={update} />;
   if (!game.startedAt) return <Intro game={game} update={update} reset={reset} />;
   if (game.outcome) return <End game={game} reset={reset} sync={sync} />;
@@ -115,7 +116,6 @@ function Intro({ game, update, reset }) {
     x.endAt = Date.now() + (x.minutes || SETTINGS.minutes) * 60000;
     return x;
   });
-  const hasVideo = useVideo();
   return (
     <div className="intro">
       {page === 0 && (
@@ -123,15 +123,9 @@ function Intro({ game, update, reset }) {
           <IdCard game={game} />
           <p>조사관 등록이 끝났어요. 이 통행증 3장이 있어야 문서고를 돌아다닐 수 있어요.</p>
           <div className="row center">
-            <button className="btn ghost" onClick={reset}>다시 등록</button>
-            <button className="btn" onClick={() => setPage(hasVideo ? 1 : 2)}>{hasVideo ? '도입 영상 보기' : '관리인의 편지 읽기'}</button>
+            <button className="btn ghost" onClick={() => { reset(); update((x) => { x.introSeen = true; return x; }); }}>다시 등록</button>
+            <button className="btn" onClick={() => setPage(2)}>관리인의 편지 읽기</button>
           </div>
-        </div>
-      )}
-      {page === 1 && (
-        <div className="intro-video">
-          <video src="media/intro.mp4" controls autoPlay playsInline onEnded={() => setPage(2)} />
-          <button className="btn" onClick={() => setPage(2)}>건너뛰기</button>
         </div>
       )}
       {page === 2 && (
@@ -147,8 +141,39 @@ function Intro({ game, update, reset }) {
   );
 }
 
+// 주소에 들어오자마자 도입 영상 → 끝나면 로그인(조사관 등록) 화면
+function OpeningVideo({ onDone }) {
+  const ref = useRef(null);
+  const [muted, setMuted] = useState(false);
+  const [needTap, setNeedTap] = useState(false);
+  const has = useVideo();
+  useEffect(() => {
+    if (has === false) { onDone(); return; }
+    const v = ref.current;
+    if (!has || !v) return;
+    v.muted = false;
+    v.play().catch(() => {
+      // 소리 있는 자동 재생이 막히면 소리 없이 시작하고 '소리 켜기'를 보여 준다
+      v.muted = true; setMuted(true);
+      v.play().catch(() => setNeedTap(true));
+    });
+  }, [has]); // eslint-disable-line react-hooks/exhaustive-deps
+  const unmute = () => { const v = ref.current; v.muted = false; setMuted(false); v.play(); };
+  const start = () => { const v = ref.current; v.muted = false; setMuted(false); setNeedTap(false); v.currentTime = 0; v.play(); };
+  return (
+    <div className="opening">
+      {has && <video ref={ref} src="media/intro.mp4" playsInline preload="auto" onEnded={onDone} />}
+      {needTap && <button className="opening-play" onClick={start} aria-label="도입 영상 재생">▶<span>도입 영상 보기</span></button>}
+      <div className="opening-bar">
+        {muted && !needTap && <button className="btn" onClick={unmute}>🔊 소리 켜기</button>}
+        <button className="btn small ghost" onClick={onDone}>건너뛰기</button>
+      </div>
+    </div>
+  );
+}
+
 function useVideo() {
-  const [ok, setOk] = useState(false);
+  const [ok, setOk] = useState(null);
   useEffect(() => {
     fetch('media/intro.mp4', { method: 'HEAD' }).then((r) => setOk(r.ok && (r.headers.get('content-type') || '').includes('video'))).catch(() => setOk(false));
   }, []);

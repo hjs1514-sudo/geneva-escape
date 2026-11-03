@@ -383,3 +383,10 @@ h1, h2, h3, h4 { font-family: var(--serif); line-height: 1.35; }
 @keyframes ring { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.3); opacity: .2; } }
 .hint-arrow { position: absolute; width: 0; height: 0; border-top: 16px solid transparent; border-bottom: 16px solid transparent; border-left: 34px solid #ffd66e; filter: drop-shadow(0 0 6px rgba(0, 0, 0, .8)) drop-shadow(0 0 10px rgba(255, 214, 110, .8)); pointer-events: none; z-index: 6; animation: pulse 1s infinite; }
 .mini-seek { position: absolute; width: 26px; height: 26px; border-radius: 50%; transform: translate(-50%, -50%); border: 3px solid #ffd66e; box-shadow: 0 0 12px #ffd66e; animation: pulse 1s infinite; }
+
+/* 첫 도입 영상 */
+.opening { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; }
+.opening video { width: 100%; height: 100%; object-fit: contain; }
+.opening-bar { position: absolute; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 8px; }
+.opening-play { position: absolute; inset: 0; margin: auto; width: 180px; height: 180px; border-radius: 50%; border: 3px solid var(--brass); background: rgba(10, 13, 20, .7); color: var(--brass); font-size: 3.4rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.opening-play span { font-size: .95rem; font-weight: 700; color: var(--paper); }
