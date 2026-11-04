@@ -106,6 +106,7 @@ function ClassView({ cls, onForget }) {
   const [err, setErr] = useState('');
   const [guards, setGuards] = useState(cls.guards ?? SETTINGS.guards);
   const [speed, setSpeed] = useState(cls.speed ?? SETTINGS.guardSpeed);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const now = useNow(250);
   const load = useCallback(async () => {
     try { setData(await getClass(cls.code, cls.key)); setErr(''); } catch (x) { setErr(x.message); }
@@ -137,6 +138,11 @@ function ClassView({ cls, onForget }) {
             <span className="small">바꾼 설정은 바뀐 QR로 새로 들어오는 학생부터 적용돼요.</span>
           </div>
           <div className="row wrap">
+            <button className="btn small" disabled={pdfBusy || !data} onClick={async () => {
+              setPdfBusy(true);
+              try { const { downloadReport } = await import('../lib/report.jsx'); await downloadReport({ cls, data, teams }); } catch (x) { setErr(`PDF를 만들지 못했어요: ${x.message}`); }
+              setPdfBusy(false);
+            }}>{pdfBusy ? 'PDF 만드는 중…' : '수업 결과 PDF 내려받기'}</button>
             <button className="btn ghost small" onClick={() => act(() => Promise.all(teams.filter((t) => t.s.status === 'playing' || t.s.status === 'timeout').map((t) => giveTime(cls.code, cls.key, t.team_id, 5))))}>모두에게 +5분</button>
             <button className="btn ghost small" onClick={async () => { try { await navigator.clipboard.writeText(boardUrl); alert('주소를 복사했어요. TV에서 열어 주세요.'); } catch { prompt('이 주소를 다른 기기에서 열어 주세요', boardUrl); } }}>다른 기기(TV)에서 열 주소</button>
             <button className="btn ghost small" onClick={() => { if (confirm('이 기기 목록에서 이 수업을 지울까요? (학생 기록은 서버에 3일 동안 남아요)')) onForget(); }}>목록에서 지우기</button>

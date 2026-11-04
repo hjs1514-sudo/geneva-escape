@@ -31,7 +31,7 @@ export default function Teacher() {
       <header className="t-head">
         <h1>교사 화면 · {SETTINGS.title}</h1>
         <div className="row">
-          <a className="btn" href="#/board">실시간 진행판 열기</a>
+          <a className="btn" href="#/board">실시간 진행판 · 수업 결과 PDF</a>
           <a className="btn ghost" href="#/">학생 화면</a>
         </div>
       </header>
